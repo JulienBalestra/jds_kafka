@@ -14,10 +14,10 @@ fclean: clean
 
 re: fclean rootfs
 
-check: rootfs
+check: 
 	SD=no PYTHONPATH=/opt/ chroot rootfs/ /opt/env/bin/python -m unittest discover /opt/app/tests/
 
-aci: rootfs
+aci: 
 	acbuild --debug begin
 	rm -Rf .acbuild/currentaci/rootfs/
 	mv rootfs .acbuild/currentaci/

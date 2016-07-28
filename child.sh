@@ -40,6 +40,7 @@ virtualenv ${CHILD_ROOTFS}${ENV} --system-site-packages
 
 mv -v /app ${CHILD_ROOTFS}/opt
 mv -v /opt/entrypoint.sh ${CHILD_ROOTFS}/entrypoint.sh
+mkdir -p ${CHILD_ROOTFS}/run/log/journal
 
 set +x
 if [[ $PROXY ]]

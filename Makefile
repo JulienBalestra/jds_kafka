@@ -14,19 +14,20 @@ fclean: clean
 
 re: fclean rootfs
 
-check: 
+check: rootfs
 	SD=no PYTHONPATH=/opt/ chroot rootfs/ /opt/env/bin/python -m unittest discover /opt/app/tests/
 
-aci: 
+aci: rootfs
 	acbuild --debug begin
 	rm -Rf .acbuild/currentaci/rootfs/
 	mv rootfs .acbuild/currentaci/
 	acbuild --debug set-name jds_kafka
 	acbuild --debug set-exec -- /entrypoint.sh
-	acbuild --debug environment add PATH '/opt/env/bin:$PATH'
+	acbuild --debug environment add PATH '/opt/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 	acbuild --debug environment add JDS /opt/app/jds_kafka.py
 	acbuild --debug write --overwrite jds_kafka.aci
 	acbuild --debug end
+	ls -lh jds_kafka.aci
 
 
-.PHONY: build clean
+.PHONY: rootfs family clean fclean re check aci

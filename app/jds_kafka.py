@@ -4,15 +4,12 @@ import json
 import os
 import time
 
-try:
-	from systemd import journal
-except ImportError:
-	if os.getenv("SD") == "no":
-		from tests import journal
-	else:
-		raise ImportError("from systemd import journal")
-
 from kafka import KafkaProducer
+
+if os.getenv("SD") == "no":
+	from tests import journal
+else:
+	from systemd import journal
 
 
 def _convert_trivial(x):

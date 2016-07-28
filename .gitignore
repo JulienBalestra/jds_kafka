@@ -11,4 +11,6 @@ a.out
 
 /.acbuild
 /father_rootfs
+/rootfs
+*.tar.gz
 *.aci

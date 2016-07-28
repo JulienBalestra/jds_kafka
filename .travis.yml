@@ -15,7 +15,7 @@ addons:
 
 before_script:
   - curl -sL https://github.com/appc/acbuild/releases/download/v0.3.1/acbuild-v0.3.1.tar.gz -o acbuild.tar.gz
-  - tar -xzvf acbuild
+  - tar -xzvf acbuild.tar.gz
 
 script:
   - PYTHONPATH=$TRAVIS_BUILD_DIR python -m unittest discover app/tests/

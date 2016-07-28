@@ -14,7 +14,7 @@ fclean: clean
 
 re: fclean rootfs
 
-aci: rootfs
+aci: 
 	acbuild --debug begin
 	rm -Rf .acbuild/currentaci/rootfs/
 	mv rootfs .acbuild/currentaci/

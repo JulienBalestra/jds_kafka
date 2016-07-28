@@ -6,6 +6,8 @@ env:
 
 sudo: required
 
+dist: trusty
+
 install:
   - pip install -r app/requirements.txt
   - sudo apt-get update -qq

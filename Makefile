@@ -14,6 +14,9 @@ fclean: clean
 
 re: fclean rootfs
 
+check: 
+	SD=no PYTHONPATH=/opt/ chroot rootfs/ /opt/env/bin/python -m unittest discover /opt/app/tests/
+
 aci: 
 	acbuild --debug begin
 	rm -Rf .acbuild/currentaci/rootfs/

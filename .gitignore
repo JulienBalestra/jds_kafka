@@ -1,0 +1,14 @@
+/.idea
+/env
+
+*.pyc
+
+*.o
+*.so
+*.a
+/environment
+a.out
+
+/.acbuild
+/father_rootfs
+*.aci

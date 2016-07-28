@@ -11,9 +11,7 @@ addons:
   apt:
     packages:
     - debootstrap
-    - chroot
     - curl
-    - tar
 
 before_script:
   - curl -sL https://github.com/appc/acbuild/releases/download/v0.3.1/acbuild-v0.3.1.tar.gz -o acbuild.tar.gz

@@ -14,8 +14,8 @@ install:
   - pip install -r app/requirements.txt
   - sudo apt-get update -qq
   - sudo apt-get install -y debootstrap curl
-  - curl -sLO https://github.com/appc/acbuild/releases/download/${AC}/acbuild-${AC}.tar.gz
-  - tar -xzvf acbuild.tar.gz
+  - curl -LO https://github.com/appc/acbuild/releases/download/${AC}/acbuild-${AC}.tar.gz
+  - tar -xzvf acbuild-${AC}.tar.gz
   - sudo mv -v acbuild-${AC}/acbuild /usr/bin/
 
 before_script:

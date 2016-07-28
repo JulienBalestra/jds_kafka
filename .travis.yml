@@ -1,0 +1,25 @@
+language:
+  - python
+
+env:
+  - SD=no
+
+install:
+  - pip install -r app/requirements.txt
+
+addons:
+  apt:
+    packages:
+    - debootstrap
+    - chroot
+    - curl
+    - tar
+
+before_script:
+  - curl -sL https://github.com/appc/acbuild/releases/download/v0.3.1/acbuild-v0.3.1.tar.gz -o acbuild.tar.gz
+  - tar -xzvf acbuild
+
+script:
+  - PYTHONPATH=$TRAVIS_BUILD_DIR python -m unittest discover app/tests/
+  - make
+  - env PATH=$PATH:$TRAVIS_BUILD_DIR make aci

@@ -4,6 +4,8 @@ language:
 env:
   - SD=no
 
+sudo: required
+
 install:
   - pip install -r app/requirements.txt
 
@@ -19,5 +21,5 @@ before_script:
 
 script:
   - PYTHONPATH=$TRAVIS_BUILD_DIR python -m unittest discover app/tests/
-  - make
-  - env PATH=$PATH:$TRAVIS_BUILD_DIR make aci
+  - sudo make
+  - sudo env PATH=$PATH:$TRAVIS_BUILD_DIR make aci

@@ -141,7 +141,7 @@ class TestJournaldStream(unittest.TestCase):
 	def test_all(self):
 		if os.getenv("SD") != "NO":
 			os.remove(jds_kafka.SINCE_DB)
-			self.jds._stream_poller = lambda x: None
+			self.jds._stream_poller = lambda: None
 		try:
 			self.jds.stream()
 			self.jds._periodic_send_task()

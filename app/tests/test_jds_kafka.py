@@ -36,6 +36,9 @@ class DummyKafka(object):
 	def close(self):
 		pass
 
+	def flush(self):
+		raise NotImplementedError
+
 
 class TestCommaList(unittest.TestCase):
 	def test_00(self):
@@ -88,28 +91,28 @@ class TestJournaldStream(unittest.TestCase):
 			"_SOURCE_REALTIME_TIMESTAMP": "1469419840339280"
 		}
 		expect = {'hostname': 'hostname',
-				  'uid': '0',
-				  'realtime_timestamp': '1469419840339708',
-				  'pid': '2500',
-				  'syslog_facility': '3',
-				  'cmdline': '/sbin/multipathd',
-				  'message': 'message logger',
-				  'transport': 'syslog',
-				  'source_realtime_timestamp': '1469419840339280',
-				  'cap_effective': '1fffffffff',
-				  'priority': '5',
-				  'gid': '0',
-				  'systemd_unit': 'multipathd.service',
-				  'syslog_identifier': 'multipathd',
-				  'comm': 'multipathd',
-				  'monotonic_timestamp': '3971318622370',
-				  'systemd_slice': 'system.slice',
-				  'exe': '/usr/sbin/multipathd',
-				  'cursor': 's=7c475f24180d47188aa7a1e3c053d440;i=c8a202;b=9938f016835e4aa6a9523b4100e2fafd;m=39ca5092898;t=5386df79bfefc;x=6ba5d133c30aeefa',
-				  'boot_id': '9938f016835e4aa6a9523b4100e2fafd',
-				  'machine_id': '1af51fd8de8e4de18d08c511e026c1e7',
-				  'systemd_cgroup': '/system.slice/multipathd.service',
-				  'selinux_context': 'system_u:system_r:lvm_t:s0'}
+		          'uid': '0',
+		          'realtime_timestamp': '1469419840339708',
+		          'pid': '2500',
+		          'syslog_facility': '3',
+		          'cmdline': '/sbin/multipathd',
+		          'message': 'message logger',
+		          'transport': 'syslog',
+		          'source_realtime_timestamp': '1469419840339280',
+		          'cap_effective': '1fffffffff',
+		          'priority': '5',
+		          'gid': '0',
+		          'systemd_unit': 'multipathd.service',
+		          'syslog_identifier': 'multipathd',
+		          'comm': 'multipathd',
+		          'monotonic_timestamp': '3971318622370',
+		          'systemd_slice': 'system.slice',
+		          'exe': '/usr/sbin/multipathd',
+		          'cursor': 's=7c475f24180d47188aa7a1e3c053d440;i=c8a202;b=9938f016835e4aa6a9523b4100e2fafd;m=39ca5092898;t=5386df79bfefc;x=6ba5d133c30aeefa',
+		          'boot_id': '9938f016835e4aa6a9523b4100e2fafd',
+		          'machine_id': '1af51fd8de8e4de18d08c511e026c1e7',
+		          'systemd_cgroup': '/system.slice/multipathd.service',
+		          'selinux_context': 'system_u:system_r:lvm_t:s0'}
 
 		r = self.jds._filters(real)
 		self.assertEqual(expect, r)
@@ -136,10 +139,19 @@ class TestJournaldStream(unittest.TestCase):
 		self.assertTrue(os.path.isfile(jds_kafka.SINCE_DB))
 
 	def test_all(self):
-		self.jds.stream()
-		self.jds._periodic_send_task()
+		if os.getenv("SD") != "NO":
+			os.remove(jds_kafka.SINCE_DB)
+		try:
+			self.jds.stream()
+			self.jds._periodic_send_task()
+		except NotImplementedError:
+			pass
+
 		self.jds.close()
-		self.assertEqual({'logs': {'cursor': 'abc'}}, self.jds.producer.messages)
+		if os.getenv("SD") != "NO":
+			self.assertGreater(len(self.jds.producer.messages["logs"]), 1)
+		else:
+			self.assertEqual({'logs': {'cursor': 'abc'}}, self.jds.producer.messages)
 
 
 if __name__ == "__main__":

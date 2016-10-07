@@ -31,6 +31,7 @@ BASIC_CONVERTERS = {
 }
 
 SINCE_DB = "./sincedb"
+JOURNALDPATH = os.getenv("JOURNALDPATH", "/run/log/journal")
 
 
 class JournaldStream(object):
@@ -38,7 +39,7 @@ class JournaldStream(object):
 	logs_topic_name = "logs"
 	kafka_sleep = 1
 
-	def __init__(self, kafka_hosts, journal_path="/run/log/journal"):
+	def __init__(self, kafka_hosts, journal_path=JOURNALDPATH):
 		self.kafka_hosts = self._force_type_value(list, kafka_hosts)
 
 		self.producer = KafkaProducer(

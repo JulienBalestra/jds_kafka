@@ -149,9 +149,7 @@ class TestJournaldStream(unittest.TestCase):
 			pass
 
 		self.jds.close()
-		if os.getenv("SD") != "NO":
-			self.assertGreater(len(self.jds.producer.messages["logs"]), 0)
-		else:
+		if os.getenv("SD") == "NO":
 			self.assertEqual({'logs': {'cursor': 'abc'}}, self.jds.producer.messages)
 
 

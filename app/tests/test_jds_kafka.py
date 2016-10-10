@@ -47,11 +47,12 @@ class TestCommaList(unittest.TestCase):
 
 class TestJournaldStream(unittest.TestCase):
     jds = jds_kafka.JournaldStream
+    testing_folder = os.path.dirname(__file__)
 
     @classmethod
     def setUpClass(cls):
         jds_kafka.KafkaProducer = DummyKafka
-        cls.jds = jds_kafka.JournaldStream(["ip_address"], "./test_journal", "./sincedb")
+        cls.jds = jds_kafka.JournaldStream(["ip_address"], "%s/test_journal" % cls.testing_folder, "./sincedb")
         if os.path.isfile(jds_kafka.SINCEDBPATH):
             os.remove(jds_kafka.SINCEDBPATH)
 

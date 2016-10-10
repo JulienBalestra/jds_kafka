@@ -44,7 +44,7 @@ class JournaldStream(object):
 
 		self.producer = KafkaProducer(
 				bootstrap_servers=self.kafka_hosts,
-				value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+				value_serializer=lambda v: json.dumps(v))
 
 		self.reader = journal.Reader(path=journal_path, converters=BASIC_CONVERTERS)
 		self.cursor = ""

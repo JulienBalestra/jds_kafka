@@ -51,7 +51,7 @@ class TestJournaldStream(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         jds_kafka.KafkaProducer = DummyKafka
-        cls.jds = jds_kafka.JournaldStream(["ip_address"])
+        cls.jds = jds_kafka.JournaldStream(["ip_address"], "/run/log/journal", "./sincedb")
         if os.path.isfile(jds_kafka.SINCEDBPATH):
             os.remove(jds_kafka.SINCEDBPATH)
 

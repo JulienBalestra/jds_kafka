@@ -8,6 +8,8 @@ from kafka import KafkaProducer
 
 if os.getenv("SD") == "no":
     from tests import journal
+
+    pass  # for IDE features
 else:
     from systemd import journal
 
@@ -30,8 +32,10 @@ BASIC_CONVERTERS = {
     '__MONOTONIC_TIMESTAMP': _convert_monotonic
 }
 
-SINCEDBPATH = "./sincedb"
+SINCEDBPATH = os.getenv("SINCEDBPATH", "./sincedb")
 JOURNALDPATH = os.getenv("JOURNALDPATH", "/run/log/journal")
+
+KAFKA_HOSTS = os.getenv("KAFKA_HOSTS")
 
 
 class JournaldStream(object):
@@ -39,18 +43,41 @@ class JournaldStream(object):
     logs_topic_name = "logs"
     kafka_sleep = 1
 
-    def __init__(self, kafka_hosts, journal_path=JOURNALDPATH):
-        self.kafka_hosts = self._force_type_value(list, kafka_hosts)
+    def __init__(self, kafka_hosts, journald_path, sincedb_path):
 
+        # Sincedb is a file where the __CURSOR of Journald is stored
+        self.sincedb_path = self._force_type_value(str, sincedb_path)
+        self._read_or_create_sincedb(self.sincedb_path)
+
+        # /run/log/journal
+        self.journald_path = self._force_type_value(str, journald_path)
+        self._is_journal_dir(self.journald_path)
+        self.reader = journal.Reader(path=self.journald_path, converters=BASIC_CONVERTERS)
+
+        # Kafka hosts
+        self.kafka_hosts = self._force_type_value(list, kafka_hosts)
         self.producer = KafkaProducer(
             bootstrap_servers=self.kafka_hosts,
             value_serializer=lambda v: json.dumps(v))
 
-        self.reader = journal.Reader(path=journal_path, converters=BASIC_CONVERTERS)
         self.cursor = ""
         self.read_messages = 0
         self.key_filters = self._build_key_filters()
         self.value_filters = lambda x: x
+
+    @staticmethod
+    def _read_or_create_sincedb(sincedb_path):
+        if os.path.isfile(sincedb_path):
+            with open(sincedb_path, 'r') as db:
+                db.read()
+        else:
+            with open(sincedb_path, "w") as empty_db:
+                empty_db.write("")
+
+    @staticmethod
+    def _is_journal_dir(journald_path):
+        if not os.path.isdir(journald_path):
+            raise IOError("%s not here" % journald_path)
 
     @staticmethod
     def _build_key_filters():
@@ -84,24 +111,26 @@ class JournaldStream(object):
     @staticmethod
     def _force_type_value(type_want, variable):
         """
-        Raise AssertionError is the type is not matching
+        Raise TypeError is the type is not matching
         :param type_want:
         :param variable:
         :return: variable
         """
-        assert type_want is type(variable)
+        if type_want is not type(variable):
+            raise TypeError("%s is not type(%s)" % (type_want, type(variable)))
+
         return variable
 
     def _save_cursor(self):
         if self.cursor != "":
-            with open(SINCEDBPATH, 'w') as f:
+            with open(self.sincedb_path, 'w') as f:
                 f.write(self.cursor)
         else:
             os.write(2, "invalid cursor\n")
 
     def _get_cursor(self):
         try:
-            with open(SINCEDBPATH, 'r') as f:
+            with open(self.sincedb_path, 'r') as f:
                 self.cursor = f.read()
                 return True if self.cursor else False
         except IOError:
@@ -130,9 +159,12 @@ class JournaldStream(object):
                     self._kafka_send(log)
             else:
                 time.sleep(self.kafka_sleep)
-            self._periodic_sleep_task(i)
+            self._periodic_stream_task(i)
 
     def stream(self):
+        """
+        Public method
+        """
         self._stream_to_seek()
         self._stream_poller()
 
@@ -144,7 +176,7 @@ class JournaldStream(object):
             os.write(1, "flush done in %d\n" % (time.time() - ts))
 
     @staticmethod
-    def _periodic_sleep_task(nb_message):
+    def _periodic_stream_task(nb_message):
         pass
 
     def _filters(self, full_log):
@@ -182,23 +214,4 @@ def comma_list(string):
     return string.split(',')
 
 
-def fast_arg_parsing():
-    args = argparse.ArgumentParser()
-    args.add_argument("kafka_hosts", type=comma_list,
-                      help="Kafka hosts \"HOST:PORT,HOST:PORT\" or HOST:PORT")
 
-    args.add_argument("--sincedb_path", type=str, default="/run/log/journal/sincedb",
-                      help="SinceDB path for Journald cursor")
-
-    return args.parse_args().kafka_hosts, args.parse_args().sincedb_path
-
-
-if __name__ == "__main__":
-    hosts, SINCEDBPATH = fast_arg_parsing()
-    print "hosts: %s sincedb: %s" % (hosts, SINCEDBPATH)
-    js = JournaldStream(hosts)
-    try:
-        js.stream()
-    except KeyboardInterrupt:
-        js.close()
-        print "gracefully close, read %d messages" % js.read_messages

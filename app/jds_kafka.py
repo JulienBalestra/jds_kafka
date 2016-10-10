@@ -35,7 +35,7 @@ BASIC_CONVERTERS = {
 SINCEDBPATH = os.getenv("SINCEDBPATH", "./sincedb")
 JOURNALDPATH = os.getenv("JOURNALDPATH", "/run/log/journal")
 
-KAFKA_HOSTS = os.getenv("KAFKA_HOSTS")
+KAFKA_HOSTS = os.getenv("KAFKA_HOSTS").split(",")
 
 
 class JournaldStream(object):

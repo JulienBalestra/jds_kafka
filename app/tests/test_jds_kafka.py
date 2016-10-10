@@ -52,13 +52,13 @@ class TestJournaldStream(unittest.TestCase):
 	def setUpClass(cls):
 		jds_kafka.KafkaProducer = DummyKafka
 		cls.jds = jds_kafka.JournaldStream(["ip_address"])
-		if os.path.isfile(jds_kafka.SINCE_DB):
-			os.remove(jds_kafka.SINCE_DB)
+		if os.path.isfile(jds_kafka.SINCEDBPATH):
+			os.remove(jds_kafka.SINCEDBPATH)
 
 	@classmethod
 	def tearDownClass(cls):
-		if os.path.isfile(jds_kafka.SINCE_DB):
-			os.remove(jds_kafka.SINCE_DB)
+		if os.path.isfile(jds_kafka.SINCEDBPATH):
+			os.remove(jds_kafka.SINCEDBPATH)
 
 	def test_00_filters(self):
 		r = self.jds._filters({"__CURSOR": "abc"})
@@ -125,22 +125,22 @@ class TestJournaldStream(unittest.TestCase):
 	def test_03_save_cursor(self):
 		self.assertFalse(self.jds.cursor)
 		self.jds._save_cursor()
-		self.assertFalse(os.path.isfile(jds_kafka.SINCE_DB))
+		self.assertFalse(os.path.isfile(jds_kafka.SINCEDBPATH))
 
 	def test_04_get_cursor(self):
 		self.assertFalse(self.jds.cursor)
-		with open(jds_kafka.SINCE_DB, 'w') as f:
+		with open(jds_kafka.SINCEDBPATH, 'w') as f:
 			f.write("s=abc")
 		self.jds._get_cursor()
 		self.assertEqual("s=abc", self.jds.cursor)
 
 	def test_05_save_cursor(self):
 		self.jds._save_cursor()
-		self.assertTrue(os.path.isfile(jds_kafka.SINCE_DB))
+		self.assertTrue(os.path.isfile(jds_kafka.SINCEDBPATH))
 
 	def test_all(self):
 		if os.getenv("SD") != "NO":
-			os.remove(jds_kafka.SINCE_DB)
+			os.remove(jds_kafka.SINCEDBPATH)
 			self.jds._stream_poller = lambda: None
 		try:
 			self.jds.stream()

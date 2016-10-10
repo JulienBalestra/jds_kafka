@@ -30,7 +30,7 @@ BASIC_CONVERTERS = {
 	'__MONOTONIC_TIMESTAMP': _convert_monotonic
 }
 
-SINCE_DB = "./sincedb"
+SINCEDBPATH = "./sincedb"
 JOURNALDPATH = os.getenv("JOURNALDPATH", "/run/log/journal")
 
 
@@ -78,14 +78,14 @@ class JournaldStream(object):
 
 	def _save_cursor(self):
 		if self.cursor != "":
-			with open(SINCE_DB, 'w') as f:
+			with open(SINCEDBPATH, 'w') as f:
 				f.write(self.cursor)
 		else:
 			os.write(2, "invalid cursor\n")
 
 	def _get_cursor(self):
 		try:
-			with open(SINCE_DB, 'r') as f:
+			with open(SINCEDBPATH, 'r') as f:
 				self.cursor = f.read()
 				return True if self.cursor else False
 		except IOError:
@@ -171,8 +171,8 @@ def fast_arg_parsing():
 
 
 if __name__ == "__main__":
-	hosts, SINCE_DB = fast_arg_parsing()
-	print "hosts: %s sincedb: %s" % (hosts, SINCE_DB)
+	hosts, SINCEDBPATH = fast_arg_parsing()
+	print "hosts: %s sincedb: %s" % (hosts, SINCEDBPATH)
 	js = JournaldStream(hosts)
 	try:
 		js.stream()

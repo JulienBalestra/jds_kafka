@@ -7,27 +7,27 @@ import time
 from kafka import KafkaProducer
 
 if os.getenv("SD") == "no":
-	from tests import journal
+    from tests import journal
 else:
-	from systemd import journal
+    from systemd import journal
 
 
 def _convert_trivial(x):
-	return x
+    return x
 
 
 def _convert_monotonic(x):
-	return x[0]
+    return x[0]
 
 
 BASIC_CONVERTERS = {
-	'MESSAGE_ID': _convert_trivial,
-	'_MACHINE_ID': _convert_trivial,
-	'_BOOT_ID': _convert_trivial,
-	'_SOURCE_REALTIME_TIMESTAMP': _convert_trivial,
-	'__REALTIME_TIMESTAMP': _convert_trivial,
-	'_SOURCE_MONOTONIC_TIMESTAMP': _convert_monotonic,
-	'__MONOTONIC_TIMESTAMP': _convert_monotonic
+    'MESSAGE_ID': _convert_trivial,
+    '_MACHINE_ID': _convert_trivial,
+    '_BOOT_ID': _convert_trivial,
+    '_SOURCE_REALTIME_TIMESTAMP': _convert_trivial,
+    '__REALTIME_TIMESTAMP': _convert_trivial,
+    '_SOURCE_MONOTONIC_TIMESTAMP': _convert_monotonic,
+    '__MONOTONIC_TIMESTAMP': _convert_monotonic
 }
 
 SINCEDBPATH = "./sincedb"
@@ -35,147 +35,170 @@ JOURNALDPATH = os.getenv("JOURNALDPATH", "/run/log/journal")
 
 
 class JournaldStream(object):
-	messages_steps = 100
-	logs_topic_name = "logs"
-	kafka_sleep = 1
+    messages_steps = 100
+    logs_topic_name = "logs"
+    kafka_sleep = 1
 
-	def __init__(self, kafka_hosts, journal_path=JOURNALDPATH):
-		self.kafka_hosts = self._force_type_value(list, kafka_hosts)
+    def __init__(self, kafka_hosts, journal_path=JOURNALDPATH):
+        self.kafka_hosts = self._force_type_value(list, kafka_hosts)
 
-		self.producer = KafkaProducer(
-				bootstrap_servers=self.kafka_hosts,
-				value_serializer=lambda v: json.dumps(v))
+        self.producer = KafkaProducer(
+            bootstrap_servers=self.kafka_hosts,
+            value_serializer=lambda v: json.dumps(v))
 
-		self.reader = journal.Reader(path=journal_path, converters=BASIC_CONVERTERS)
-		self.cursor = ""
-		self.read_messages = 0
-		self.key_filters = self._build_key_filters()
-		self.value_filters = lambda x: x
+        self.reader = journal.Reader(path=journal_path, converters=BASIC_CONVERTERS)
+        self.cursor = ""
+        self.read_messages = 0
+        self.key_filters = self._build_key_filters()
+        self.value_filters = lambda x: x
 
-	@staticmethod
-	def _build_key_filters():
+    @staticmethod
+    def _build_key_filters():
+        """
+        Transform the keys of a dict
+        :return: list of functions
+        """
 
-		def remove_prefix(key, prefix="_"):
-			new = key
-			while new[0] == prefix:
-				new = new[1:]
-			return new
+        def remove_prefix(key, prefix="_"):
+            """
+            Journald create keys with '_', '__' prefix
+            :param key:
+            :param prefix:
+            :return: Key reformatted
+            """
+            new = key
+            while new[0] == prefix:
+                new = new[1:]
+            return new
 
-		def lower_key(key):
-			return key.lower()
+        def lower_key(key):
+            return key.lower()
 
-		def aggregate_filters(key):
-			for f in [remove_prefix, lower_key]:
-				key = f(key)
-			return key
+        def aggregate_filters(key):
+            for f in [remove_prefix, lower_key]:
+                key = f(key)
+            return key
 
-		return aggregate_filters
+        return aggregate_filters
 
-	@staticmethod
-	def _force_type_value(type_want, variable):
-		assert type_want is type(variable)
-		return variable
+    @staticmethod
+    def _force_type_value(type_want, variable):
+        """
+        Raise AssertionError is the type is not matching
+        :param type_want:
+        :param variable:
+        :return: variable
+        """
+        assert type_want is type(variable)
+        return variable
 
-	def _save_cursor(self):
-		if self.cursor != "":
-			with open(SINCEDBPATH, 'w') as f:
-				f.write(self.cursor)
-		else:
-			os.write(2, "invalid cursor\n")
+    def _save_cursor(self):
+        if self.cursor != "":
+            with open(SINCEDBPATH, 'w') as f:
+                f.write(self.cursor)
+        else:
+            os.write(2, "invalid cursor\n")
 
-	def _get_cursor(self):
-		try:
-			with open(SINCEDBPATH, 'r') as f:
-				self.cursor = f.read()
-				return True if self.cursor else False
-		except IOError:
-			return False
+    def _get_cursor(self):
+        try:
+            with open(SINCEDBPATH, 'r') as f:
+                self.cursor = f.read()
+                return True if self.cursor else False
+        except IOError:
+            return False
 
-	def _stream_to_seek(self):
-		if self._get_cursor():
-			os.write(1, "using saved cursor \"%s\"\n" % self.cursor)
-			self.reader.seek_cursor(self.cursor)
-			self.reader.get_next()
-		else:
-			os.write(1, "using new cursor\n")
+    def _stream_to_seek(self):
+        if self._get_cursor():
+            os.write(1, "using saved cursor \"%s\"\n" % self.cursor)
+            self.reader.seek_cursor(self.cursor)
+            self.reader.get_next()
+        else:
+            os.write(1, "using new cursor\n")
 
-		for log in self.reader:
-			self._kafka_send(log)
+        for log in self.reader:
+            self._kafka_send(log)
 
-		os.write(1, "seeked journal after %d messages\n" % self.read_messages)
+        os.write(1, "seeked journal after %d messages\n" % self.read_messages)
 
-	def _stream_poller(self):
-		i = 0
-		os.write(1, "start polling realtime messages\n")
-		while self.reader.get_events():
-			i += 1
-			if self.reader.process() == journal.APPEND:
-				for log in self.reader:
-					self._kafka_send(log)
-			else:
-				time.sleep(self.kafka_sleep)
-			self._periodic_sleep_task(i)
+    def _stream_poller(self):
+        i = 0
+        os.write(1, "start polling realtime messages\n")
+        while self.reader.get_events():
+            i += 1
+            if self.reader.process() == journal.APPEND:
+                for log in self.reader:
+                    self._kafka_send(log)
+            else:
+                time.sleep(self.kafka_sleep)
+            self._periodic_sleep_task(i)
 
-	def stream(self):
-		self._stream_to_seek()
-		self._stream_poller()
+    def stream(self):
+        self._stream_to_seek()
+        self._stream_poller()
 
-	def _periodic_send_task(self):
-		if self.read_messages % self.messages_steps == 0:
-			os.write(1, "read %d messages, process flush\n" % self.read_messages)
-			ts = time.time()
-			self.producer.flush()
-			os.write(1, "flush done in %d\n" % (time.time() - ts))
+    def _periodic_send_task(self):
+        if self.read_messages % self.messages_steps == 0:
+            os.write(1, "read %d messages, process flush\n" % self.read_messages)
+            ts = time.time()
+            self.producer.flush()
+            os.write(1, "flush done in %d\n" % (time.time() - ts))
 
-	@staticmethod
-	def _periodic_sleep_task(nb_message):
-		pass
+    @staticmethod
+    def _periodic_sleep_task(nb_message):
+        pass
 
-	def _filters(self, full_log):
-		# Keys
-		filter_data = {self.key_filters(k): self.value_filters(v) for k, v in full_log.iteritems()}
+    def _filters(self, full_log):
+        # Keys
+        filter_data = {self.key_filters(k): self.value_filters(v) for k, v in full_log.iteritems()}
 
-		# Values
-		# Handle by BASIC_CONVERTERS Journal builtin
+        # Values
+        # Handle by BASIC_CONVERTERS Journal builtin
 
-		return filter_data
+        return filter_data
 
-	def _kafka_send(self, full_log):
-		filter_data = self._filters(full_log)
-		self.producer.send(self.logs_topic_name, filter_data)
-		self.cursor = full_log["__CURSOR"]
-		self._save_cursor()
-		self.read_messages += 1
-		self._periodic_send_task()
+    def _kafka_send(self, full_log):
+        # Transform the log
+        filter_data = self._filters(full_log)
 
-	def close(self):
-		os.write(1, "closing journald.Reader\n")
-		self.reader.close()
-		os.write(1, "closing kafka connection\n")
-		self.producer.close()
+        # Send it to Kafka
+        self.producer.send(self.logs_topic_name, filter_data)
+
+        # Save the cursor
+        self.cursor = full_log["__CURSOR"]
+        self._save_cursor()
+
+        # Internal instance stats
+        self.read_messages += 1
+        self._periodic_send_task()
+
+    def close(self):
+        os.write(1, "closing journald.Reader\n")
+        self.reader.close()
+        os.write(1, "closing kafka connection\n")
+        self.producer.close()
 
 
 def comma_list(string):
-	return string.split(',')
+    return string.split(',')
 
 
 def fast_arg_parsing():
-	args = argparse.ArgumentParser()
-	args.add_argument("kafka_hosts", type=comma_list,
-					  help="Kafka hosts \"HOST:PORT,HOST:PORT\" or HOST:PORT")
+    args = argparse.ArgumentParser()
+    args.add_argument("kafka_hosts", type=comma_list,
+                      help="Kafka hosts \"HOST:PORT,HOST:PORT\" or HOST:PORT")
 
-	args.add_argument("--sincedb_path", type=str, default="/run/log/journal/sincedb",
-					  help="SinceDB path for Journald cursor")
+    args.add_argument("--sincedb_path", type=str, default="/run/log/journal/sincedb",
+                      help="SinceDB path for Journald cursor")
 
-	return args.parse_args().kafka_hosts, args.parse_args().sincedb_path
+    return args.parse_args().kafka_hosts, args.parse_args().sincedb_path
 
 
 if __name__ == "__main__":
-	hosts, SINCEDBPATH = fast_arg_parsing()
-	print "hosts: %s sincedb: %s" % (hosts, SINCEDBPATH)
-	js = JournaldStream(hosts)
-	try:
-		js.stream()
-	except KeyboardInterrupt:
-		js.close()
-		print "gracefully close, read %d messages" % js.read_messages
+    hosts, SINCEDBPATH = fast_arg_parsing()
+    print "hosts: %s sincedb: %s" % (hosts, SINCEDBPATH)
+    js = JournaldStream(hosts)
+    try:
+        js.stream()
+    except KeyboardInterrupt:
+        js.close()
+        print "gracefully close, read %d messages" % js.read_messages

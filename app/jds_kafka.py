@@ -214,4 +214,10 @@ def comma_list(string):
     return string.split(',')
 
 
-
+if __name__ == "__main__":
+    jds = JournaldStream(KAFKA_HOSTS, JOURNALDPATH, SINCEDBPATH)
+    try:
+        jds.stream()
+    except KeyboardInterrupt:
+        jds.close()
+        print "gracefully close, read %d messages" % jds.read_messages

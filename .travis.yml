@@ -1,27 +1,5 @@
 language:
   - python
 
-env:
-  global:
-    - SD=no
-    - AC=v0.3.1
-
-sudo: required
-
-dist: trusty
-
-install:
-  - pip install -r app/requirements.txt
-  - sudo apt-get update -qq
-  - sudo apt-get install -y debootstrap curl
-  - curl -LO https://github.com/appc/acbuild/releases/download/${AC}/acbuild-${AC}.tar.gz
-  - tar -xzvf acbuild-${AC}.tar.gz
-  - sudo mv -v acbuild-${AC}/acbuild /usr/bin/
-
-before_script:
-  - PYTHONPATH=$TRAVIS_BUILD_DIR python -m unittest discover app/tests/
-
 script:
-  - sudo make
-  - sudo make check
-  - sudo make aci
+  - SD=no PYTHONPATH=$TRAVIS_BUILD_DIR python -m unittest discover app/tests/

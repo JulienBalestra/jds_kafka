@@ -14,3 +14,4 @@ a.out
 /rootfs
 *.tar.gz
 *.aci
+sincedb
